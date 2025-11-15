@@ -15,6 +15,8 @@
         <a href="/favorites.html">Favorites</a>
         <a href="/about.html">About</a>
         <a href="/help.html">Help</a>
+        <span id="userInfo" class="user-info"></span>
+        <button id="signOutBtn" class="btn-signout hidden">Sign Out</button>
       </div>
     </nav>
   </header>
@@ -45,6 +47,33 @@
     Data from TheMealDB (dev key=1) • Built for class demo
   </footer>
 
+  <script type="module">
+    import { requireAuth } from '/scripts/auth-guard.js';
+    import { getCurrentUser, signOut, initSupabase } from '/scripts/auth.js';
+    
+    // Load config and check auth
+    async function init() {
+      const res = await fetch('/api/config');
+      const config = await res.json();
+      initSupabase(config.SUPABASE_URL, config.SUPABASE_ANON_KEY);
+      
+      if (await requireAuth()) {
+        // Show user info
+        const user = await getCurrentUser();
+        const userInfo = document.getElementById('userInfo');
+        const signOutBtn = document.getElementById('signOutBtn');
+        if (user && user.email) {
+          userInfo.textContent = user.email;
+          signOutBtn.classList.remove('hidden');
+          signOutBtn.addEventListener('click', async () => {
+            await signOut();
+            window.location.href = '/login.html';
+          });
+        }
+      }
+    }
+    init();
+  </script>
   <script src="/scripts/api.js" type="module"></script>
   <script src="/scripts/main.js" type="module"></script>
 </body>

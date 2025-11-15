@@ -1,10 +1,30 @@
 # Recipe Roulette
 
-## Description
+**INST 377 Final Project**  
+**Group Members**: Eyoha Henoke, Hawareyawe Ketema
+
+## Project Description
 
 Recipe Roulette is a web application that solves the "choice overload" problem when deciding what to cook. Instead of endlessly scrolling through recipes, users can click a single "SPIN" button to get a complete, cookable recipe instantly. The application supports optional filters by ingredient, category (e.g., Dessert, Seafood), or cuisine area (e.g., Italian, Mexican) to help users find recipes they can make with ingredients they already have.
 
-The application fetches recipe data from TheMealDB API, normalizes it into a consistent format, and allows users to save their favorite recipes to a Supabase database. Each recipe includes a high-quality image, complete ingredient list with measurements, step-by-step instructions, tags, and links to source and YouTube videos when available.
+### Key Features
+
+- **One-Click Recipe Discovery**: Spin for instant recipe suggestions
+- **Smart Filtering**: Filter by ingredient, category, or cuisine area
+- **User Authentication**: Secure login/signup with Supabase Auth
+- **Personal Favorites**: Save and manage favorite recipes (requires login)
+- **Recipe Details**: Complete ingredient lists, step-by-step instructions, and video links
+- **Responsive Design**: Works seamlessly on desktop and mobile devices
+
+### Technology Stack
+
+- **Frontend**: HTML5, CSS3, Vanilla JavaScript (ES6 modules)
+- **Backend**: Vercel Serverless Functions (Node.js)
+- **Database**: Supabase (PostgreSQL)
+- **Authentication**: Supabase Auth
+- **External API**: TheMealDB (recipe data)
+- **Libraries**: Chart.js (data visualization), Animate.css (animations)
+- **Deployment**: Vercel
 
 ## Target Browsers
 
@@ -12,28 +32,26 @@ Recipe Roulette is designed to work on all contemporary desktop and mobile brows
 
 - **Desktop**: Chrome (latest), Firefox (latest), Safari (latest), Edge (latest)
 - **Mobile**: iOS Safari (iOS 14+), Chrome Mobile (Android 8+)
-- **Responsive Design**: The application uses a mobile-first responsive design that adapts to various screen sizes
+- **Responsive Design**: Mobile-first responsive design that adapts to various screen sizes
 
 The application uses modern web standards (ES6 modules, Fetch API, CSS Grid) and should work on any browser that supports these features (generally browsers from 2018 onwards).
 
-## Link to Developer Manual
+## Live Demo
 
-See the [Developer Manual](#developer-manual) section below.
+https://recipe-roulette-git-main-eyohas-projects.vercel.app
 
----
+## Developer Manual
 
-# Developer Manual
+### Installation
 
-## Installation
-
-### Prerequisites
+#### Prerequisites
 
 - Node.js (v18 or higher)
 - npm (comes with Node.js)
 - A Supabase account and project
 - A Vercel account (for deployment)
 
-### Setup Steps
+#### Setup Steps
 
 1. **Clone the repository**
    ```bash
@@ -48,23 +66,14 @@ See the [Developer Manual](#developer-manual) section below.
 
 3. **Set up Supabase**
    - Create a new Supabase project at https://supabase.com
-   - In your Supabase project, create the following tables:
-
-   **Table: `profiles`**
-   ```sql
-   CREATE TABLE profiles (
-     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-     email TEXT UNIQUE NOT NULL,
-     created_at TIMESTAMPTZ DEFAULT NOW(),
-     role TEXT DEFAULT 'user'
-   );
-   ```
+   - Enable Email authentication in Authentication → Providers
+   - In SQL Editor, create the following tables:
 
    **Table: `favorites`**
    ```sql
    CREATE TABLE favorites (
      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-     user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+     user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
      meal_id TEXT NOT NULL,
      meal_name TEXT NOT NULL,
      meal_thumb TEXT,
@@ -73,18 +82,7 @@ See the [Developer Manual](#developer-manual) section below.
    );
    ```
 
-   **Table: `history`** (optional, for future use)
-   ```sql
-   CREATE TABLE history (
-     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-     user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
-     meal_id TEXT NOT NULL,
-     meal_name TEXT NOT NULL,
-     created_at TIMESTAMPTZ DEFAULT NOW()
-   );
-   ```
-
-   - Enable Row Level Security (RLS) on `favorites` and `history` tables
+   - Enable Row Level Security (RLS) on `favorites` table
    - Create RLS policies:
      ```sql
      -- Allow users to read their own favorites
@@ -109,20 +107,20 @@ See the [Developer Manual](#developer-manual) section below.
      ```
    - For Vercel deployment, add these as environment variables in the Vercel dashboard
 
-## Running the Application
+### Running the Application
 
-### Local Development
+#### Local Development
 
-1. **Start the Vercel development server**
+1. **Start the development server**
    ```bash
    npm run dev
    ```
 
 2. **Open your browser**
    - Navigate to `http://localhost:3000`
-   - The application should load with the home page
+   - You will be redirected to login if not authenticated
 
-### Production Deployment
+#### Production Deployment
 
 1. **Deploy to Vercel**
    ```bash
@@ -134,24 +132,9 @@ See the [Developer Manual](#developer-manual) section below.
    - Go to your project settings in Vercel
    - Add `SUPABASE_URL` and `SUPABASE_ANON_KEY` as environment variables
 
-## Testing
-
-Currently, the project does not include automated test suites. Manual testing should be performed for:
-
-- **Spin functionality**: Test with no filters, with ingredient filter, with category filter, with area filter
-- **Favorites**: Test saving favorites, viewing favorites page, removing favorites
-- **API endpoints**: Test all endpoints return expected data formats
-- **Error handling**: Test behavior when API calls fail or return no results
-
-### Future Testing Roadmap
-
-- Unit tests for API normalization functions
-- Integration tests for API endpoints
-- E2E tests for user workflows
-
 ## API Documentation
 
-All API endpoints are serverless functions located in the `/api` directory and are accessible at `/api/{endpoint-name}`.
+All API endpoints are serverless functions located in the `/api` directory.
 
 ### GET `/api/lists`
 
@@ -178,7 +161,7 @@ GET /api/lists
 
 ### GET `/api/spin`
 
-Retrieves a random recipe from TheMealDB API, optionally filtered by ingredient, category, or area. If filters are provided, it fetches matching recipes and randomly selects one, then retrieves the full recipe details.
+Retrieves a random recipe from TheMealDB API, optionally filtered by ingredient, category, or area.
 
 **Request:**
 ```
@@ -190,8 +173,6 @@ GET /api/spin?area=Italian&category=Dessert&include=chicken
 - `category` (optional): Recipe category (e.g., "Dessert", "Seafood")
 - `include` (optional): Ingredient name (e.g., "chicken", "tomato")
 
-**Note:** Only one filter type is used at a time, with priority: `include` > `category` > `area`
-
 **Response:**
 ```json
 {
@@ -199,18 +180,16 @@ GET /api/spin?area=Italian&category=Dessert&include=chicken
   "name": "Teriyaki Chicken Casserole",
   "category": "Chicken",
   "area": "Japanese",
-  "thumb": "https://www.themealdb.com/images/media/meals/wvpsxx1468256321.jpg",
-  "youtubeUrl": "https://www.youtube.com/watch?v=4aZr5hZXP_s",
-  "sourceUrl": "https://www.delish.com/cooking/recipe-ideas/recipes/a53823/easy-chicken-and-broccoli-casserole-recipe/",
+  "thumb": "https://www.themealdb.com/images/media/meals/...",
+  "youtubeUrl": "https://www.youtube.com/watch?v=...",
+  "sourceUrl": "https://www.delish.com/...",
   "tags": ["Meat", "Casserole"],
   "ingredients": [
     { "name": "soy sauce", "measure": "3/4 cup" },
-    { "name": "water", "measure": "1/2 cup" },
     ...
   ],
   "instructions": [
     "Preheat oven to 350° F.",
-    "Spray a 9x13-inch glass baking dish with cooking spray.",
     ...
   ]
 }
@@ -225,15 +204,13 @@ GET /api/spin?area=Italian&category=Dessert&include=chicken
 
 ### GET `/api/favorites`
 
-Retrieves all favorite recipes for the authenticated user from Supabase.
+Retrieves all favorite recipes for the authenticated user.
 
 **Request:**
 ```
 GET /api/favorites
+Authorization: Bearer {supabase_jwt_token}
 ```
-
-**Headers:**
-- `Authorization: Bearer {supabase_jwt_token}` (required)
 
 **Response:**
 ```json
@@ -245,8 +222,7 @@ GET /api/favorites
     "meal_name": "Teriyaki Chicken Casserole",
     "meal_thumb": "https://www.themealdb.com/images/media/meals/...",
     "created_at": "2024-01-15T10:30:00Z"
-  },
-  ...
+  }
 ]
 ```
 
@@ -259,7 +235,7 @@ GET /api/favorites
 
 ### POST `/api/favorites`
 
-Saves a recipe to the user's favorites in Supabase.
+Saves a recipe to the user's favorites.
 
 **Request:**
 ```
@@ -304,7 +280,7 @@ Removes a favorite recipe from the user's favorites list.
 
 **Request:**
 ```
-DELETE /api/favorites/52772
+DELETE /api/favorites?meal_id=52772
 Authorization: Bearer {supabase_jwt_token}
 ```
 
@@ -324,77 +300,20 @@ Authorization: Bearer {supabase_jwt_token}
 
 ---
 
-## Known Bugs and Limitations
+## Known Limitations
 
-### Current Issues
+1. **Filter Priority**: Only one filter type is applied at a time (ingredient > category > area). Users cannot combine multiple filter types simultaneously.
 
-1. **No User Authentication**: The current implementation does not include user authentication. Favorites are stored per session using localStorage as a fallback. To use Supabase favorites, authentication must be implemented.
+2. **No Error Recovery**: If TheMealDB API is unavailable, the application shows a generic error message without retry logic.
 
-2. **Filter Priority**: Only one filter type is applied at a time (ingredient > category > area). Users cannot combine multiple filter types simultaneously.
+3. **Limited Ingredient Search**: The ingredient filter uses exact matching, which may miss recipes with similar ingredients or alternative names.
 
-3. **No Error Recovery**: If TheMealDB API is unavailable, the application shows a generic error message without retry logic.
+4. **No Pagination**: The favorites page displays all favorites without pagination, which could be slow with many saved recipes.
 
-4. **Limited Ingredient Search**: The ingredient filter uses exact matching, which may miss recipes with similar ingredients or alternative names.
+## Future Enhancements
 
-5. **No Pagination**: The favorites page displays all favorites without pagination, which could be slow with many saved recipes.
-
-### Data Limitations
-
-- Recipe data depends on TheMealDB's coverage, which may not include all cuisines or dietary restrictions
-- Some recipes may have incomplete ingredient measurements
-- YouTube and source links are not available for all recipes
-
-## Roadmap for Future Development
-
-### Short-term (Next Sprint)
-
-1. **User Authentication**
-   - Implement Supabase Auth with email/password or magic link
-   - Add sign-in/sign-out UI
-   - Migrate localStorage favorites to Supabase
-
-2. **Enhanced Filtering**
-   - Allow combining multiple filter types
-   - Add dietary restriction filters (vegetarian, vegan, gluten-free)
-   - Add difficulty level filter
-
-3. **Error Handling Improvements**
-   - Add retry logic for failed API calls
-   - Implement better error messages with actionable suggestions
-   - Add offline mode detection
-
-### Medium-term (Next Quarter)
-
-1. **Recipe History**
-   - Implement spin history tracking
-   - Add "Recently Viewed" section
-   - Show statistics (most spun categories, favorite cuisines)
-
-2. **Social Features**
-   - Share recipes via social media
-   - Export favorites as a shopping list
-   - Print-friendly recipe view
-
-3. **Performance Optimization**
-   - Implement caching for frequently accessed recipes
-   - Add image lazy loading
-   - Optimize bundle size
-
-### Long-term (Future Versions)
-
-1. **Advanced Features**
-   - Meal planning calendar
-   - Shopping list generation from multiple recipes
-   - Recipe recommendations based on user preferences
-   - Integration with grocery delivery services
-
-2. **Mobile App**
-   - Native iOS/Android apps
-   - Push notifications for meal suggestions
-   - Offline recipe storage
-
-3. **AI Integration**
-   - Smart ingredient substitution suggestions
-   - Personalized recipe recommendations
-   - Dietary preference learning
-
+- Allow combining multiple filter types
+- Add dietary restriction filters (vegetarian, vegan, gluten-free)
+- Implement recipe history tracking
+- Add recipe sharing functionality
+- Mobile app development

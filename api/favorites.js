@@ -11,16 +11,37 @@ const supabase = supabaseUrl && supabaseKey
   ? createClient(supabaseUrl, supabaseKey)
   : null;
 
-export default async function handler(req, res) {
-  // For now, we'll use a simple user_id from query or default to 'anonymous'
-  // In production, this should come from authenticated JWT token
-  const userId = req.query.user_id || 'anonymous';
-  
+// Verify JWT token and get user ID
+async function getUserIdFromToken(req) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return null;
+  }
+
+  const token = authHeader.split(' ')[1];
+  if (!supabase) return null;
+
   try {
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+    if (error || !user) return null;
+    return user.id;
+  } catch (e) {
+    return null;
+  }
+}
+
+export default async function handler(req, res) {
+  try {
+    // Get user ID from JWT token
+    const userId = await getUserIdFromToken(req);
+    
+    if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized. Please sign in.' });
+    }
+
     if (req.method === 'GET') {
       // Get all favorites for user
       if (!supabase) {
-        // Fallback: return empty array if Supabase not configured
         return res.status(200).json([]);
       }
 
@@ -58,10 +79,11 @@ export default async function handler(req, res) {
         });
       }
 
+      // Verify user owns this request
       const { data, error } = await supabase
         .from('favorites')
         .insert({
-          user_id: userId,
+          user_id: userId, // Use authenticated user ID
           meal_id,
           meal_name,
           meal_thumb: meal_thumb || null
