@@ -31,30 +31,42 @@
 
   <script type="module">
     import { requireAuth } from '/scripts/auth-guard.js';
-    import { getCurrentUser, signOut } from '/scripts/auth.js';
+    import { getCurrentUser, signOut, initSupabase } from '/scripts/auth.js';
+    import { loadFavorites } from '/scripts/favorites.js';
     
     async function init() {
-      const res = await fetch('/api/config');
-      const config = await res.json();
-      const { initSupabase } = await import('/scripts/auth.js');
-      initSupabase(config.SUPABASE_URL, config.SUPABASE_ANON_KEY);
-      
-      if (await requireAuth()) {
-        const user = await getCurrentUser();
-        const userInfo = document.getElementById('userInfo');
-        const signOutBtn = document.getElementById('signOutBtn');
-        if (user && user.email) {
-          userInfo.textContent = user.email;
-          signOutBtn.classList.remove('hidden');
-          signOutBtn.addEventListener('click', async () => {
-            await signOut();
-            window.location.href = '/login.html';
-          });
+      try {
+        const res = await fetch('/api/config');
+        if (!res.ok) {
+          console.error('Failed to load config:', res.status);
+          return;
         }
+        const config = await res.json();
+        initSupabase(config.SUPABASE_URL, config.SUPABASE_ANON_KEY);
+        
+        if (await requireAuth()) {
+          const user = await getCurrentUser();
+          const userInfo = document.getElementById('userInfo');
+          const signOutBtn = document.getElementById('signOutBtn');
+          if (user && user.email) {
+            userInfo.textContent = user.email;
+            signOutBtn.classList.remove('hidden');
+            signOutBtn.addEventListener('click', async () => {
+              await signOut();
+              window.location.href = '/';
+            });
+          }
+          
+          // Load favorites after auth is confirmed
+          setTimeout(() => {
+            loadFavorites();
+          }, 500);
+        }
+      } catch (e) {
+        console.error('Auth init error:', e);
       }
     }
     init();
   </script>
-  <script src="/scripts/favorites.js" type="module"></script>
 </body>
 </html>

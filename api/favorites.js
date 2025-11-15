@@ -19,13 +19,18 @@ async function getUserIdFromToken(req) {
   }
 
   const token = authHeader.split(' ')[1];
-  if (!supabase) return null;
+  if (!supabase || !token) return null;
 
   try {
+    // Set the session with the token and get user
     const { data: { user }, error } = await supabase.auth.getUser(token);
-    if (error || !user) return null;
+    if (error || !user) {
+      console.error('Auth error:', error);
+      return null;
+    }
     return user.id;
   } catch (e) {
+    console.error('Token verification error:', e);
     return null;
   }
 }

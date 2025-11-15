@@ -17,7 +17,7 @@ export async function requireAuth() {
   
   const authenticated = await isAuthenticated();
   if (!authenticated) {
-    window.location.href = '/login.html';
+    window.location.href = '/';
     return false;
   }
   return true;
@@ -29,8 +29,8 @@ export function initAuthGuard() {
     onAuthStateChange((event, session) => {
       if (event === 'SIGNED_OUT' || !session) {
         // Only redirect if we're not already on login page
-        if (!window.location.pathname.includes('login.html')) {
-          window.location.href = '/login.html';
+        if (window.location.pathname !== '/' && !window.location.pathname.includes('index.html')) {
+          window.location.href = '/';
         }
       }
     });

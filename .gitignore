@@ -8,6 +8,12 @@ node_modules/
 
 # Vercel
 .vercel
+VERCEL_FIX.md
+
+#Setup
+SETUP.md
+QUICKSTART.md
+DEPLOY.md
 
 # Next.js (if accidentally created)
 .next/

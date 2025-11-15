@@ -1,12 +1,20 @@
 import { getFavorites, deleteFavorite } from './api.js';
+import { initSupabase } from './auth.js';
 
 const grid = document.getElementById('grid');
 const empty = document.getElementById('empty');
 
-init();
-
+// Wait for auth to be initialized before loading favorites
 async function init() {
   try {
+    // Make sure Supabase is initialized
+    const res = await fetch('/api/config');
+    const config = await res.json();
+    initSupabase(config.SUPABASE_URL, config.SUPABASE_ANON_KEY);
+    
+    // Small delay to ensure auth is ready
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
     const favs = await getFavorites();
     if (!favs.length) {
       empty.classList.remove('hidden');
@@ -22,9 +30,28 @@ async function init() {
   } catch (e) {
     console.error('Failed to load favorites:', e);
     empty.classList.remove('hidden');
-    empty.textContent = 'Failed to load favorites. Please try again.';
+    empty.textContent = `Failed to load favorites: ${e.message || 'Please try again.'}`;
   }
 }
+
+// Export init so it can be called after auth is ready
+export { init as loadFavorites };
+
+// Auto-init after page loads and auth is ready
+(async () => {
+  // Wait for page to load
+  if (document.readyState === 'loading') {
+    await new Promise(resolve => {
+      document.addEventListener('DOMContentLoaded', resolve);
+    });
+  }
+  
+  // Wait for auth guard to complete (it runs in the HTML)
+  await new Promise(resolve => setTimeout(resolve, 1500));
+  
+  // Now try to load favorites
+  init();
+})();
 
 function Tile(f) {
   return `
