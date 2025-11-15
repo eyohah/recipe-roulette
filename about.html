@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>About • Recipe Roulette</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="/styles/base.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <nav class="nav">
+      <a href="/" class="brand">Recipe Roulette</a>
+      <div class="links">
+        <a href="/favorites.html">Favorites</a>
+        <a href="/about.html" aria-current="page">About</a>
+        <a href="/help.html">Help</a>
+      </div>
+    </nav>
+  </header>
+
+  <main class="container">
+    <h1>About</h1>
+    <p>Recipe Roulette solves “choice overload” by giving you one cookable recipe per spin,
+      with optional filters (ingredient, category, area).</p>
+    <p>Stack: HTML/CSS + vanilla JS (frontend), Vercel Serverless Functions (backend),
+      TheMealDB (dev key=1), Supabase (database for favorites).</p>
+    <h2>How it works</h2>
+    <pre class="code">
+[Filters] -> /filter.php -> pick random id -> /lookup.php -> normalize -> render
+(No filters) -> /random.php -> normalize -> render
+    </pre>
+    <h2>Recipe Categories Distribution</h2>
+    <p class="muted">Distribution of recipe categories available in TheMealDB:</p>
+    <div style="max-width: 600px; margin: 20px 0;">
+      <canvas id="categoryChart"></canvas>
+    </div>
+  </main>
+
+  <footer class="footer">Data from TheMealDB • Class demo</footer>
+  <script src="/scripts/about.js" type="module"></script>
+</body>
+</html>

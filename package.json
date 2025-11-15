@@ -1,0 +1,16 @@
+{
+  "name": "recipe-roulette",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0",
+    "chart.js": "^4.4.0",
+    "animate.css": "^4.1.1"
+  },
+  "scripts": {
+    "dev": "python3 -m http.server 3000",
+    "serve": "python3 -m http.server 3000",
+    "vercel:dev": "vercel dev"
+  }
+}
