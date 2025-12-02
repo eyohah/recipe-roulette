@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Meal Details • Recipe Roulette</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="/styles/base.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
+</head>
+<body>
+  <header class="topbar">
+    <nav class="nav">
+      <a href="/" class="brand">Recipe Roulette</a>
+      <div class="links">
+        <a href="/favorites.html">Favorites</a>
+        <a href="/about.html">About</a>
+        <a href="/help.html">Help</a>
+        <span id="userInfo" class="user-info"></span>
+        <button id="signOutBtn" class="btn-signout hidden">Sign Out</button>
+      </div>
+    </nav>
+  </header>
+
+  <main class="container">
+    <div id="loading" class="muted animate__animated animate__pulse">Loading meal details...</div>
+    <div id="error" class="muted hidden"></div>
+    <div id="mealDetails" class="card hidden" aria-live="polite"></div>
+  </main>
+
+  <footer class="footer">Data from TheMealDB • Class demo</footer>
+
+  <script type="module">
+    import { requireAuth } from '/scripts/auth-guard.js';
+    import { getCurrentUser, signOut, initSupabase } from '/scripts/auth.js';
+    import { saveFavorite } from '/scripts/api.js';
+    
+    async function init() {
+      try {
+        const res = await fetch('/api/config');
+        if (!res.ok) {
+          console.error('Failed to load config:', res.status);
+          return;
+        }
+        const config = await res.json();
+        initSupabase(config.SUPABASE_URL, config.SUPABASE_ANON_KEY);
+        
+        if (await requireAuth()) {
+          const user = await getCurrentUser();
+          const userInfo = document.getElementById('userInfo');
+          const signOutBtn = document.getElementById('signOutBtn');
+          if (user && user.email) {
+            userInfo.textContent = user.email;
+            signOutBtn.classList.remove('hidden');
+            signOutBtn.addEventListener('click', async () => {
+              await signOut();
+              window.location.href = '/';
+            });
+          }
+          
+          // Load meal details after auth is confirmed
+          setTimeout(() => {
+            loadMealDetails();
+          }, 500);
+        }
+      } catch (e) {
+        console.error('Auth init error:', e);
+      }
+    }
+    
+    async function loadMealDetails() {
+      const loading = document.getElementById('loading');
+      const error = document.getElementById('error');
+      const mealDetails = document.getElementById('mealDetails');
+      
+      try {
+        // Get meal ID from URL query parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        const mealId = urlParams.get('id');
+        
+        if (!mealId) {
+          loading.classList.add('hidden');
+          error.classList.remove('hidden');
+          error.textContent = 'No meal ID provided';
+          return;
+        }
+        
+        // Fetch meal details
+        const response = await fetch(`/api/meal?id=${encodeURIComponent(mealId)}`);
+        if (!response.ok) {
+          throw new Error('Failed to load meal details');
+        }
+        
+        const meal = await response.json();
+        renderMeal(meal);
+        
+        loading.classList.add('hidden');
+        mealDetails.classList.remove('hidden');
+        mealDetails.classList.add('animate__animated', 'animate__fadeIn');
+      } catch (e) {
+        console.error('Failed to load meal:', e);
+        loading.classList.add('hidden');
+        error.classList.remove('hidden');
+        error.textContent = `Failed to load meal: ${e.message || 'Please try again.'}`;
+      }
+    }
+    
+    function renderMeal(m) {
+      const tags = (m.tags || []).map(t => `<span class="badge">#${t}</span>`).join(' ');
+      const ing = m.ingredients.map(i => `<li>${escapeHtml(i.measure)} ${escapeHtml(i.name)}</li>`).join('');
+      const steps = m.instructions.map(s => `<li>${escapeHtml(s)}</li>`).join('');
+
+      const mealDetails = document.getElementById('mealDetails');
+      mealDetails.innerHTML = `
+        <div class="result-header">
+          <img src="${m.thumb}" alt="${escapeHtml(m.name)}" />
+          <div>
+            <h2>${escapeHtml(m.name)}</h2>
+            <div class="muted">${escapeHtml(m.area || '')} ${m.area && m.category ? '•' : ''} ${escapeHtml(m.category || '')}</div>
+            <div style="margin-top:8px">${tags || ''}</div>
+            <div class="actions">
+              <button class="btn" id="saveBtn">♥ Save</button>
+              <a class="btn" href="/home.html">Back to Home</a>
+              ${m.sourceUrl ? `<a class="btn" href="${m.sourceUrl}" target="_blank" rel="noopener">Source</a>` : ''}
+              ${m.youtubeUrl ? `<a class="btn" href="${m.youtubeUrl}" target="_blank" rel="noopener">YouTube</a>` : ''}
+            </div>
+          </div>
+        </div>
+
+        <h3>Ingredients</h3>
+        <ul class="list">${igClean(ing)}</ul>
+
+        <h3>Instructions</h3>
+        <ol class="list">${steps}</ol>
+      `;
+
+      document.getElementById('saveBtn').addEventListener('click', () => saveFavoriteHandler(m));
+    }
+    
+    async function saveFavoriteHandler(m) {
+      try {
+        await saveFavorite(m);
+        const btn = document.getElementById('saveBtn');
+        if (btn) {
+          btn.textContent = '✓ Saved!';
+          btn.classList.add('animate__animated', 'animate__pulse');
+          setTimeout(() => {
+            btn.textContent = '♥ Save';
+            btn.classList.remove('animate__animated', 'animate__pulse');
+          }, 2000);
+        }
+      } catch (e) {
+        if (e.message === 'Already in favorites') {
+          alert('This recipe is already in your favorites!');
+        } else {
+          alert('Failed to save favorite. Please try again.');
+        }
+      }
+    }
+    
+    function escapeHtml(s='') {
+      return s.replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+    
+    function igClean(html) { 
+      return html.replaceAll('null', '').replaceAll('undefined',''); 
+    }
+    
+    init();
+  </script>
+</body>
+</html>
+

@@ -22,10 +22,21 @@ async function init() {
     }
     grid.innerHTML = favs.map(f => Tile(f)).join('');
     grid.addEventListener('click', (e) => {
+      // Check if click is on Remove button
       const btn = e.target.closest('button[data-id]');
-      if (!btn) return;
-      const id = btn.getAttribute('data-id');
-      removeFavorite(id);
+      if (btn) {
+        e.stopPropagation(); // Prevent tile click
+        const id = btn.getAttribute('data-id');
+        removeFavorite(id);
+        return;
+      }
+      
+      // Otherwise, check if click is on tile (but not button)
+      const tile = e.target.closest('.tile[data-meal-id]');
+      if (tile) {
+        const mealId = tile.getAttribute('data-meal-id');
+        window.location.href = `/meal.html?id=${encodeURIComponent(mealId)}`;
+      }
     });
   } catch (e) {
     console.error('Failed to load favorites:', e);
