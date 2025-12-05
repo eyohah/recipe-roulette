@@ -6,6 +6,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="/styles/base.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
+  <style>
+    /* Hide login page initially to prevent flash during auth check */
+    body:not(.auth-checked) .auth-container {
+      opacity: 0;
+      visibility: hidden;
+    }
+    body.auth-checked .auth-container {
+      opacity: 1;
+      visibility: visible;
+      transition: opacity 0.2s ease;
+    }
+  </style>
 </head>
 <body>
   <header class="topbar">
@@ -62,7 +74,7 @@
   <footer class="footer">Data from TheMealDB • INST 377 Project</footer>
 
   <script type="module">
-    import { signIn, signUp, onAuthStateChange, initSupabase, getSupabase } from '/scripts/auth.js';
+    import { signIn, signUp, onAuthStateChange, initSupabase, getSupabase, isAuthenticated } from '/scripts/auth.js';
 
     let supabaseInitialized = false;
     const signInForm = document.getElementById('signInForm');
@@ -75,10 +87,30 @@
     const signInBtn = signInForm.querySelector('button[type="submit"]');
     const signUpBtn = signUpForm.querySelector('button[type="submit"]');
 
+    // Check if already authenticated and redirect immediately
+    async function checkAuthAndRedirect() {
+      try {
+        const res = await fetch('/api/config');
+        const config = await res.json();
+        initSupabase(config.SUPABASE_URL, config.SUPABASE_ANON_KEY);
+        
+        const authenticated = await isAuthenticated();
+        if (authenticated) {
+          // Already authenticated, redirect immediately without showing page
+          window.location.href = '/home.html';
+          return true;
+        }
+        return false;
+      } catch (e) {
+        console.error('Auth check failed:', e);
+        return false;
+      }
+    }
+
     // Load Supabase config from API
     async function loadConfig() {
       try {
-        configStatus.textContent = 'Loading configuration...';
+        // Don't show loading message, just load silently
         const res = await fetch('/api/config');
         if (!res.ok) {
           const errorText = await res.text();
@@ -97,8 +129,9 @@
         initSupabase(config.SUPABASE_URL, config.SUPABASE_ANON_KEY);
         supabaseInitialized = true;
         
-        configStatus.textContent = '✓ Ready to sign in';
-        configStatus.style.color = 'var(--primary)';
+        // Hide status on success
+        configStatus.textContent = '';
+        configStatus.style.display = 'none';
         
         console.log('Supabase initialized successfully');
         
@@ -112,12 +145,17 @@
         console.error('Failed to load config:', e);
         configStatus.textContent = `✗ ${e.message}`;
         configStatus.style.color = '#fca5a5';
-        // Don't show error in forms yet - let user try to sign in/up first
       }
     }
 
-    // Start loading config immediately
-    loadConfig();
+    // Check auth first, then show page if needed
+    const isAuth = await checkAuthAndRedirect();
+    if (!isAuth) {
+      // Not authenticated, show login page
+      document.body.classList.add('auth-checked');
+      // Start loading config for login functionality
+      loadConfig();
+    }
 
     // Tab switching
     tabBtns.forEach(btn => {
