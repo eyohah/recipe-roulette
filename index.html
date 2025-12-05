@@ -18,6 +18,7 @@
     <div class="auth-container">
       <h1>Welcome to Recipe Roulette</h1>
       <p class="muted">Please sign in to access recipes and save your favorites</p>
+      <div id="config-status" class="muted" style="margin-top: 12px; font-size: 0.9rem;"></div>
 
       <div id="authTabs" class="tabs">
         <button class="tab-btn active" data-tab="signin">Sign In</button>
@@ -61,27 +62,68 @@
   <footer class="footer">Data from TheMealDB • INST 377 Project</footer>
 
   <script type="module">
-    import { signIn, signUp, onAuthStateChange, initSupabase } from '/scripts/auth.js';
+    import { signIn, signUp, onAuthStateChange, initSupabase, getSupabase } from '/scripts/auth.js';
 
-    // Load Supabase config from API
-    async function loadConfig() {
-      try {
-        const res = await fetch('/api/config');
-        const config = await res.json();
-        initSupabase(config.SUPABASE_URL, config.SUPABASE_ANON_KEY);
-      } catch (e) {
-        console.error('Failed to load config:', e);
-      }
-    }
-
-    await loadConfig();
-
+    let supabaseInitialized = false;
     const signInForm = document.getElementById('signInForm');
     const signUpForm = document.getElementById('signUpForm');
     const tabBtns = document.querySelectorAll('.tab-btn');
     const signInError = document.getElementById('signin-error');
     const signUpError = document.getElementById('signup-error');
     const signUpSuccess = document.getElementById('signup-success');
+    const configStatus = document.getElementById('config-status');
+    const signInBtn = signInForm.querySelector('button[type="submit"]');
+    const signUpBtn = signUpForm.querySelector('button[type="submit"]');
+
+    // Disable forms until Supabase is initialized
+    signInBtn.disabled = true;
+    signUpBtn.disabled = true;
+    signInBtn.textContent = 'Loading...';
+    signUpBtn.textContent = 'Loading...';
+
+    // Load Supabase config from API
+    async function loadConfig() {
+      configStatus.textContent = 'Loading configuration...';
+      try {
+        const res = await fetch('/api/config');
+        if (!res.ok) {
+          const errorText = await res.text();
+          let errorMessage = `Failed to load config: ${res.status} ${res.statusText}`;
+          if (res.status === 500) {
+            errorMessage = 'Supabase environment variables are not configured. Please set SUPABASE_URL and SUPABASE_ANON_KEY in Vercel project settings.';
+          }
+          throw new Error(errorMessage);
+        }
+        const config = await res.json();
+        
+        if (!config.SUPABASE_URL || !config.SUPABASE_ANON_KEY) {
+          throw new Error('Supabase configuration is missing. Please check environment variables in Vercel settings.');
+        }
+        
+        initSupabase(config.SUPABASE_URL, config.SUPABASE_ANON_KEY);
+        supabaseInitialized = true;
+        
+        // Enable forms
+        signInBtn.disabled = false;
+        signUpBtn.disabled = false;
+        signInBtn.textContent = 'Sign In';
+        signUpBtn.textContent = 'Sign Up';
+        configStatus.textContent = '✓ Ready to sign in';
+        configStatus.style.color = 'var(--primary)';
+        
+        console.log('Supabase initialized successfully');
+      } catch (e) {
+        console.error('Failed to load config:', e);
+        configStatus.textContent = `✗ ${e.message}`;
+        configStatus.style.color = '#fca5a5';
+        signInError.textContent = `Configuration error: ${e.message}`;
+        signInError.classList.remove('hidden');
+        signUpError.textContent = `Configuration error: ${e.message}`;
+        signUpError.classList.remove('hidden');
+      }
+    }
+
+    await loadConfig();
 
     // Tab switching
     tabBtns.forEach(btn => {
@@ -106,7 +148,16 @@
     // Sign In
     signInForm.addEventListener('submit', async (e) => {
       e.preventDefault();
+      
+      if (!supabaseInitialized) {
+        signInError.textContent = 'Application is still loading. Please wait...';
+        signInError.classList.remove('hidden');
+        return;
+      }
+      
       signInError.classList.add('hidden');
+      signInBtn.disabled = true;
+      signInBtn.textContent = 'Signing in...';
       
       const email = document.getElementById('signin-email').value;
       const password = document.getElementById('signin-password').value;
@@ -115,16 +166,28 @@
         await signIn(email, password);
         window.location.href = '/home.html';
       } catch (error) {
-        signInError.textContent = error.message || 'Failed to sign in';
+        console.error('Sign in error:', error);
+        signInError.textContent = error.message || 'Failed to sign in. Please check your credentials.';
         signInError.classList.remove('hidden');
+        signInBtn.disabled = false;
+        signInBtn.textContent = 'Sign In';
       }
     });
 
     // Sign Up
     signUpForm.addEventListener('submit', async (e) => {
       e.preventDefault();
+      
+      if (!supabaseInitialized) {
+        signUpError.textContent = 'Application is still loading. Please wait...';
+        signUpError.classList.remove('hidden');
+        return;
+      }
+      
       signUpError.classList.add('hidden');
       signUpSuccess.classList.add('hidden');
+      signUpBtn.disabled = true;
+      signUpBtn.textContent = 'Creating account...';
       
       const email = document.getElementById('signup-email').value;
       const password = document.getElementById('signup-password').value;
@@ -133,18 +196,25 @@
         await signUp(email, password);
         signUpSuccess.classList.remove('hidden');
         signUpForm.reset();
+        signUpBtn.disabled = false;
+        signUpBtn.textContent = 'Sign Up';
       } catch (error) {
-        signUpError.textContent = error.message || 'Failed to create account';
+        console.error('Sign up error:', error);
+        signUpError.textContent = error.message || 'Failed to create account. Please try again.';
         signUpError.classList.remove('hidden');
+        signUpBtn.disabled = false;
+        signUpBtn.textContent = 'Sign Up';
       }
     });
 
     // Check if already authenticated
-    onAuthStateChange((event, session) => {
-      if (session) {
-        window.location.href = '/home.html';
-      }
-    });
+    if (supabaseInitialized) {
+      onAuthStateChange((event, session) => {
+        if (session) {
+          window.location.href = '/home.html';
+        }
+      });
+    }
   </script>
 </body>
 </html>
